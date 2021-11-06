@@ -1,0 +1,33 @@
+#+TITLE: Fun Watchface
+
+This a *watchface* to be used on a Garmin watch (think Garmin IQ).
+
+* Purpose of the watchface
+
+Rounded watchface featuring following information:
+
+- Location and oldness of the meteo information
+- Temperature, Dew point (in celcius)
+- Barometer (ingh)
+- Wind direction and speed (with gust) in knot
+- Sunrise (yellow), sunset (orange)
+- 24h time (small white triangle)
+- 24h UTC time (small orange triangle)
+- Notification count up to 5 (indicator on the top)
+- Alarm count (indicator on the bottom)
+- Phone connectivity status (seconds are blue if connected, else red)
+- Heart rate graphical information including colored zone (on the left)
+- Battery information (on the right)
+- Date
+
+All meteo information are coming from openweathermap, based on location (So, you have to start and activity outside and wait for GPS fix to have a location)
+
+* Install
+
+** Using your phone
+You can use the Garmin applications from your phone (Garmin Connect or Connect IQ).
+
+** Using you computer
+
+You can checkout the sources using GIT and build FunWatch.prg yourself.
+When it's done, just upload it on your Garmin watch plugged as USB storage in /Garmin/apps.
