@@ -184,8 +184,6 @@ class FunWatchView extends WatchUi.WatchFace {
   private function draw_meteo(dc) {
     var txt;
     dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-    data["computed"]["temp"] = 10;
-    data["computed"]["dew"] = -12;
     txt = Lang.format("$1$/$2$ $3$", [data["computed"]["temp"].format("%d"),
                                           data["computed"]["dew"].format("%d"),
                                           data["computed"]["ingh"].format("%.02f")]);
