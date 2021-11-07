@@ -69,8 +69,8 @@ class FunWatchView extends WatchUi.WatchFace {
     min_width = .5 * (dc.getHeight() / scale_factor);
     utc_width = min_width;
     utc_delta = .3 * dc.getHeight() / (scale_factor * 2);
-    sec_width = .5 * utc_width;
-    sec_delta = .5 * utc_delta;
+    sec_width = 1 * utc_width;
+    sec_delta = 1 * utc_delta;
 
     cx = dc.getWidth() / 2;
     cy = dc.getHeight() / 2;
