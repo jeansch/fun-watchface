@@ -139,7 +139,24 @@ class FunWatchView extends WatchUi.WatchFace {
     var bw = clip[1][0] - clip[0][0] + 1;
     var bh = clip[1][1] - clip[0][1] + 1;
     dc.setClip(clip[0][0], clip[0][1], bw, bh);
-    dc.setColor(last_connected ? Graphics.COLOR_BLUE: Graphics.COLOR_RED, Graphics.COLOR_TRANSPARENT);
+    var cx_color = Graphics.COLOR_BLUE;
+    var nocx_color = Graphics.COLOR_RED;
+    var debug = Storage.getValue("debug");
+    if (debug != null) {
+      if (debug["delta"] > 7200) {
+        cx_color = Graphics.COLOR_YELLOW;
+        nocx_color = Graphics.COLOR_YELLOW;
+      }
+      if (debug["distance"] > 10) {
+        cx_color = Graphics.COLOR_PURPLE;
+        nocx_color = Graphics.COLOR_PINK;
+      }
+      if (debug["ai_loc"] == null) {
+        cx_color = Graphics.COLOR_GREEN;
+        nocx_color = Graphics.COLOR_ORANGE;
+      }
+    }
+    dc.setColor(last_connected ? cx_color: nocx_color, Graphics.COLOR_TRANSPARENT);
     dc.fillPolygon(tri);
 
     var settings = System.getDeviceSettings();
@@ -365,7 +382,6 @@ class FunWatchView extends WatchUi.WatchFace {
   }
 
   public function onUpdate(dc) {
-
     var tdc;
     if (offb != null) {
       dc.clearClip();
@@ -373,21 +389,18 @@ class FunWatchView extends WatchUi.WatchFace {
     } else {
       tdc = dc;
     }
-
     zones = UserProfile.getHeartRateZones(UserProfile.HR_ZONE_SPORT_GENERIC);
     if (zones == null) {
       zones = Storage.getValue("zones");
     } else {
       zones = Storage.setValue("zones", zones);
     }
-
-
     data = Storage.getValue("data");
+    var debug = Storage.getValue("debug");
     var local_time = System.getClockTime();
     var utc_time = Time.now().add(new Time.Duration(-local_time.timeZoneOffset + local_time.dst));
     tdc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
     tdc.clear();
-
     if (data != null) {
       try {
         var delta = Time.now().value() - data["dt"];
@@ -396,6 +409,7 @@ class FunWatchView extends WatchUi.WatchFace {
           draw_city(tdc, delta);
           draw_meteo(tdc);
         }
+
       } catch (e) {
       }
     }

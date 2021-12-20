@@ -18,6 +18,7 @@
 using Toybox.Background;
 using Toybox.Communications;
 using Toybox.System;
+using Toybox.Math;
 using Toybox.Application.Storage;
 
 (:background)
@@ -27,25 +28,97 @@ class FunServiceDelegate extends Toybox.System.ServiceDelegate {
     System.ServiceDelegate.initialize();
   }
 
-  function onTemporalEvent() {
-    var loc = null;
+
+  function get_ai_loc() {
     var ai = Activity.getActivityInfo();
     if (ai != null) {
       if (ai.currentLocation != null) {
-        loc = ai.currentLocation.toDegrees();
+        var loc = ai.currentLocation.toDegrees();
+        return ai.currentLocation.toDegrees();
       }
     }
-    if (loc == null) {
-      var data = Storage.getValue("data");
-      if (data != null) {
-        try {
-          loc = [data["coord"]["lat"],data["coord"]["lon"]];
-        } catch (e) {
+    return null;
+  }
+
+  function get_data_loc() {
+    var data = Storage.getValue("data");
+    if (data != null) {
+      try {
+        return [data["coord"]["lat"], data["coord"]["lon"]];
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+
+  function toRadians(d) {
+    return d * Math.PI / 180;
+  }
+
+  function atan2(y, x) {
+    var angle = 0;
+    if (x == 0) {
+      if (y == 0) {
+        angle = 0;
+      } else if (y > 0) {
+        angle = Math.PI/2;
+      } else {
+        angle = -Math.PI/2;
+      }
+    } else {
+      angle = Math.atan(y/x);
+      if (x < 0) {
+        if (y > 0) {
+          angle += Math.PI;
+        } else if (y < 0) {
+          angle -= Math.PI;
+        } else {
+          angle = Math.PI;
         }
       }
     }
-    if (loc != null) {
+    return angle;
+  }
+
+  function dist(co1, co2) {
+    var phi_1 = toRadians(co1[0]);
+    var phi_2 = toRadians(co2[0]);
+    var delta_phi = toRadians(co2[0] - co1[0]);
+    var delta_lambda = toRadians(co2[1] - co1[1]);
+    var a = Math.pow(Math.sin(delta_phi / 2.0), 2) +
+      Math.cos(phi_1) * Math.cos(phi_2) *
+      Math.pow(Math.sin(delta_lambda / 2.0), 2);
+    return 6925 * atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // return (6371000 * (2 * atan2(Math.sqrt(a), Math.sqrt(1 - a)))) / 1840; // nm
+  }
+
+  function onTemporalEvent() {
+    var delta = 7200;
+    var ai_loc = get_ai_loc();
+    var data_loc = get_data_loc();
+    var last_weather = Storage.getValue("last_weather");
+    var distance = 100;
+    if (ai_loc != null && data_loc != null) {
+      try {
+        distance = dist(ai_loc, data_loc);
+      } catch (e) {
+      }
+    }
+    if (last_weather != null) {
+      delta = Time.now().value() - last_weather;
+    }
+    var loc = ai_loc != null ? ai_loc : data_loc != null ? data_loc : null;
+    if (loc != null && (last_weather == null || delta > 1800 || distance > 10)) {
       get_weather(loc[0].toFloat(), loc[1].toFloat());
+    } else {
+      var data = {};
+      data["delta"] = delta;
+      data["distance"] = distance;
+      data["ai_loc"] = ai_loc;
+      data["data_loc"] = data_loc;
+      Background.exit(data);
     }
   }
 
