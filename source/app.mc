@@ -30,28 +30,16 @@ class FunWatch extends Application.AppBase {
   }
 
   function onBackgroundData(data) {
-    if (data["main"] != null) {
-      var computed = {};
-      var sunrise = Utils.ts_to_utcinfo(data["sys"]["sunrise"] + data["timezone"]);
-      sunrise = [sunrise.hour, sunrise.min];
-      var sunset = Utils.ts_to_utcinfo(data["sys"]["sunset"] + data["timezone"]);
-      sunset = [sunset.hour, sunset.min];
-      computed["sunrise"] = sunrise;
-      computed["sunset"] = sunset;
-      computed["ingh"] = data["main"]["pressure"] / 33.864;
-      computed["temp"] = data["main"]["temp"] - 273.15;
-      // https://en.wikipedia.org/wiki/Dew_point
-      var rh = data["main"]["humidity"];
-      var b = computed["temp"] < 0 ? 17.966 : 17.368;
-      var c = computed["temp"] < 0 ? 247.15 : 238.88;
-      computed["dew"] = c * ((Math.ln(rh / 100.0) + ((b * computed["temp"]) / (c + computed["temp"]))) /
-                             (b - Math.ln(rh / 100.0) - ((b * computed["temp"]) / (c + computed["temp"]))));
-      data["computed"] = computed;
-      Storage.setValue("data", data);
-      Storage.setValue("last_weather", Time.now().value());
-      Storage.setValue("debug", null);
+    if (data.get("cache") == true) {
+      Storage.setValue("cache", data);
     } else {
-      Storage.setValue("debug", data);
+      var sunrise = Utils.ts_to_info(int(data["sunrise"]));
+      data["_sunrise"] = [sunrise.hour, sunrise.min];
+      var sunset = Utils.ts_to_info(int(data["sunset"]));
+      data["_sunset"] = [sunset.hour, sunset.min];
+      Storage.setValue("weather", data);
+      Storage.setValue("last_weather", Time.now().value());
+      Storage.deleteValue("cache");
     }
   }
 
@@ -61,8 +49,7 @@ class FunWatch extends Application.AppBase {
 
   function getInitialView() {
     Background.registerForTemporalEvent(new Time.Duration(5 * 60));
-    var v = new FunWatchView();
-    return [v , new FunWatchDelegate(v)];
+    return [new FunWatchView(), new FunWatchDelegate()];
   }
 
 }

@@ -19,14 +19,19 @@
 
 using Toybox.Time;
 
+
+function int(x) {
+  return x.toNumber();
+}
+
 class Utils {
 
-  function ts_to_utcinfo(ts) {
+  function ts_to_info(ts) {
     var ret = Time.Gregorian.moment({
         :year => 1970, :month=> 1, :day=> 1,
         :hour=> 0, :minute => 0, :second=> 0});
     ret = ret.add(new Time.Duration(ts));
-    return Time.Gregorian.utcInfo(ret, Time.FORMAT_SHORT);
+    return Time.Gregorian.info(ret, Time.FORMAT_SHORT);
   }
 
   function h_tdt(delta) {
