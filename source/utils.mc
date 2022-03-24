@@ -44,7 +44,7 @@ class Utils {
   //! Compute a bounding box from the passed in points
   //! @param points Points to include in bounding box
   //! @return The bounding box points
-  function getBoundingBox(points) {
+  function getBoundingBox2(points, points2) {
     var min = [9999, 9999];
     var max = [0,0];
 
@@ -63,6 +63,24 @@ class Utils {
 
       if (points[i][1] > max[1]) {
         max[1] = points[i][1];
+      }
+    }
+
+    for (var i = 0; i < points2.size(); ++i) {
+      if (points2[i][0] < min[0]) {
+        min[0] = points2[i][0];
+      }
+
+      if (points2[i][1] < min[1]) {
+        min[1] = points2[i][1];
+      }
+
+      if (points2[i][0] > max[0]) {
+        max[0] = points2[i][0];
+      }
+
+      if (points2[i][1] > max[1]) {
+        max[1] = points2[i][1];
       }
     }
 

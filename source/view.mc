@@ -32,6 +32,7 @@ var scale_factor = 7;
 var zones = [];
 var cache;
 var sec_triangles = {};
+var use_pressure = false;
 
 class FunWatchView extends WatchUi.WatchFace {
   var weather;
@@ -55,9 +56,13 @@ class FunWatchView extends WatchUi.WatchFace {
   var setting_right_start;
 
   var connected = false;
+  var old_min;
+  var local_time;
 
   public function initialize() {
     WatchFace.initialize();
+    var ds = System.getDeviceSettings();
+    use_pressure = ds.elevationUnits == System.UNIT_METRIC;
   }
 
 
@@ -75,6 +80,7 @@ class FunWatchView extends WatchUi.WatchFace {
         :height=>dc.getHeight()});
 
     generate_sec_tri();
+    old_min = -1;
   }
 
 
@@ -148,23 +154,17 @@ class FunWatchView extends WatchUi.WatchFace {
         nocx_color = Graphics.COLOR_ORANGE;
       }
     }
-    var ct = System.getClockTime();
-    // restore background
-    var prev_sec = ct.sec == 0 ? 59 : ct.sec - 1;
-    var tri = sec_tri(prev_sec);
-    var clip = Utils.getBoundingBox(tri);
+
+    // restore background and draw new sec
+    var prev_sec = local_time.sec == 0 ? 59 : local_time.sec - 1;
+    var tri = sec_tri(local_time.sec);
+    var clip = Utils.getBoundingBox2(sec_tri(prev_sec), tri);
     var bw = clip[1][0] - clip[0][0] + 1;
     var bh = clip[1][1] - clip[0][1] + 1;
     dc.setClip(clip[0][0], clip[0][1], bw, bh);
     if (offb != null) {
       dc.drawBitmap(0, 0, offb);
     }
-    // draw sec
-    tri = sec_tri(ct.sec);
-    clip = Utils.getBoundingBox(tri);
-    bw = clip[1][0] - clip[0][0] + 1;
-    bh = clip[1][1] - clip[0][1] + 1;
-    dc.setClip(clip[0][0], clip[0][1], bw, bh);
     dc.setColor(connected ? cx_color: nocx_color, Graphics.COLOR_TRANSPARENT);
     dc.fillPolygon(tri);
     dc.clearClip();
@@ -204,7 +204,7 @@ class FunWatchView extends WatchUi.WatchFace {
     dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
     txt = Lang.format("$1$/$2$ $3$", [weather["temp"].format("%d"),
                                       weather["dew"].format("%d"),
-                                      weather["ingh"].format("%.02f")]);
+                                      use_pressure ? weather["pressure"].format("%d") : weather["ingh"].format("%.02f")]);
     dc.drawText(cx, cy + 2 * radius / 6, Graphics.FONT_TINY,
                 txt,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -223,10 +223,8 @@ class FunWatchView extends WatchUi.WatchFace {
     var start, end, cos_a, sin_a, a;
     var bat_color = 0, bat;
     var i;
-    bat = System.getSystemStats().battery;
-    for (var h = 0; h <= (60 * 2 - 1); h += 1) {
-      if (0 == h % 2) {
-        i = h / 2;
+
+    for (i = 0; i <= 59; i += 1) {
         a = Math.PI - i / 60.0 * (2 * Math.PI);
         cos_a = Math.cos(a);
         sin_a = Math.sin(a);
@@ -237,34 +235,39 @@ class FunWatchView extends WatchUi.WatchFace {
                     Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawLine(cx + start * sin_a, cy + start * cos_a,
                     cx + end * sin_a , cy + end * cos_a);
-        if (i <= 30) {
-          bat_color = bat >= 40 ? Graphics.COLOR_GREEN : bat >= 20 ? Graphics.COLOR_YELLOW : Graphics.COLOR_RED;
-          dc.setColor(i * 100 / 30 <= bat ? bat_color : Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-          dc.setPenWidth(i * 100 / 30 <= bat ? 4: 1);
-          start = radius - min_width - 1 * (radius / (scale_factor * 3));
-          end = radius - min_width - 2 * (radius / (scale_factor * 3));
-          dc.drawLine(cx + start * sin_a, cy + start * cos_a,
-                      cx + end * sin_a , cy + end * cos_a);
-        }
-      }
-      if (h % 5 == 0) {
+    }
+
+    bat = System.getSystemStats().battery;
+    for (i = 0; i <= 30; i += 1) {
+      a = Math.PI - i / 60.0 * (2 * Math.PI);
+      cos_a = Math.cos(a);
+      sin_a = Math.sin(a);
+      bat_color = bat >= 40 ? Graphics.COLOR_GREEN : bat >= 20 ? Graphics.COLOR_YELLOW : Graphics.COLOR_RED;
+      dc.setColor(i * 100 / 30 <= bat ? bat_color : Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+      dc.setPenWidth(i * 100 / 30 <= bat ? 4: 1);
+      start = radius - min_width - 1 * (radius / (scale_factor * 3));
+      end = radius - min_width - 2 * (radius / (scale_factor * 3));
+      dc.drawLine(cx + start * sin_a, cy + start * cos_a,
+                  cx + end * sin_a , cy + end * cos_a);
+    }
+
+    dc.setPenWidth(2);
+    dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
+    for (var h = 0; h <= (60 * 2 - 1); h += 5) {
         a = Math.PI - h / 120.0 * (2 * Math.PI);
         cos_a = Math.cos(a);
         sin_a = Math.sin(a);
-        dc.setPenWidth(2);
-        dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
         start = radius - (radius / (scale_factor * 3));
         end = radius - 2 * (radius / (scale_factor * 3));
         dc.drawLine(cx + start * sin_a, cy + start * cos_a,
                     cx + end * sin_a , cy + end * cos_a);
       }
-    }
   }
 
 
   function draw_time(dc) {
-    dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
     var now = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+    dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
     dc.drawText(cx, cy - min_width * 3.5, Graphics.FONT_SMALL,
                 Lang.format("$1$ $2$ $3$", [now.day_of_week, now.month, now.day]),
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -325,8 +328,9 @@ class FunWatchView extends WatchUi.WatchFace {
     set_x = cx - setting_length / 2;
     set_y = cy - (radius - (min_width + radius / 5));
     dc.setColor(settings.notificationCount ? Graphics.COLOR_DK_GREEN : settings.doNotDisturb ? Graphics.COLOR_DK_RED : Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
-    dc.setClip(set_x, set_y, setting_length, setting_width);
-    dc.clear();
+
+    // dc.setClip(set_x, set_y, setting_length, setting_width);
+    // dc.clear();
 
     if (settings.notificationCount || settings.doNotDisturb) {
       for(var i = 0; i < (settings.doNotDisturb ? 1 : settings.notificationCount); i++) {
@@ -346,8 +350,9 @@ class FunWatchView extends WatchUi.WatchFace {
     dc.setColor(settings.alarmCount ? Graphics.COLOR_RED : Graphics.COLOR_DK_GRAY, Graphics.COLOR_BLACK);
     set_x = cx - setting_length / 2;
     set_y = cy + (radius - (min_width + radius / 5));
-    dc.setClip(set_x, set_y, setting_length, setting_width);
-    dc.clear();
+
+    // dc.setClip(set_x, set_y, setting_length, setting_width);
+    // dc.clear();
     if (settings.alarmCount) {
       for(var i = 0; i < settings.alarmCount; i++) {
         dc.fillRoundedRectangle(set_x + i * (setting_length / settings.alarmCount),
@@ -362,7 +367,7 @@ class FunWatchView extends WatchUi.WatchFace {
                               radius / 16);
     }
 
-    dc.clearClip();
+    // dc.clearClip();
   }
 
   function update_zones() {
@@ -371,7 +376,9 @@ class FunWatchView extends WatchUi.WatchFace {
       if (zones_from_storage == null) {
         zones = UserProfile.getHeartRateZones(UserProfile.HR_ZONE_SPORT_GENERIC);
         if (zones != null) {
+          Storage.setValue("lock", true);
           Storage.setValue("zones", zones);
+          Storage.setValue("lock", false);
         }
       } else {
         zones = zones_from_storage;
@@ -395,7 +402,9 @@ class FunWatchView extends WatchUi.WatchFace {
           }
         }
         if (write_loc) {
+          Storage.setValue("lock", true);
           Storage.setValue("view_loc", ai_loc);
+          Storage.setValue("lock", false);
         }
       }
     }
@@ -408,33 +417,38 @@ class FunWatchView extends WatchUi.WatchFace {
     } else {
       tdc = dc;
     }
-    update_zones();
-    update_cached_loc();
-    weather = Storage.getValue("weather");
-    cache = Storage.getValue("cache");
-    var local_time = System.getClockTime();
-    var utc_time = Time.now().add(new Time.Duration(
-        -local_time.timeZoneOffset + local_time.dst));
-    tdc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
-    tdc.clear();
-    if (weather != null) {
-      if (weather.get("updated") != null) {
-        var delta = Time.now().value() - weather["updated"];
-        if (delta < 86400) {
-          try {
-            draw_sun(tdc);
-            draw_city(tdc, delta);
-            draw_meteo(tdc);
-          } catch (e) {
+
+    local_time = System.getClockTime();
+    if (old_min != local_time.min) {
+      update_zones();
+      update_cached_loc();
+      weather = Storage.getValue("weather");
+      cache = Storage.getValue("cache");
+      tdc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+      tdc.clear();
+      draw_circular_things(tdc);
+      var utc_time = Time.now().add(new Time.Duration(-local_time.timeZoneOffset + local_time.dst));
+      draw_hands(tdc, local_time, Gregorian.info(utc_time, Time.FORMAT_MEDIUM));
+      draw_time(tdc);
+      draw_hr(tdc, get_hr());
+      draw_settings(tdc, System.getDeviceSettings());
+
+      if (weather != null) {
+        if (weather.get("updated") != null) {
+          var delta = Time.now().value() - weather["updated"];
+          if (delta < 86400) {
+            try {
+              draw_sun(tdc);
+              draw_city(tdc, delta);
+              draw_meteo(tdc);
+            } catch (e) {
+            }
           }
         }
       }
+      old_min = local_time.min;
+
     }
-    draw_circular_things(tdc);
-    draw_hands(tdc, local_time, Gregorian.info(utc_time, Time.FORMAT_MEDIUM));
-    draw_time(tdc);
-    draw_hr(tdc, get_hr());
-    draw_settings(tdc, System.getDeviceSettings());
     if (offb != null) {
       dc.drawBitmap(0, 0, offb);
     }
@@ -457,8 +471,8 @@ class FunWatchDelegate extends WatchUi.WatchFaceDelegate {
   }
 
   public function onPowerBudgetExceeded(pi) {
-    System.println("Budget exceeded, average:" +
-                   pi.executionTimeAverage.format("%f"));
+    // System.println("Budget exceeded, average:" +
+    //                pi.executionTimeAverage.format("%f"));
   }
 
 }

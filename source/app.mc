@@ -52,4 +52,7 @@ class FunWatch extends Application.AppBase {
     return [new FunWatchView(), new FunWatchDelegate()];
   }
 
+  public function getSettingsView() {
+    return [new SettingsView(), new SettingsViewDelegate()];
+  }
 }

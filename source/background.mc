@@ -114,6 +114,10 @@ class FunServiceDelegate extends Toybox.System.ServiceDelegate {
   }
 
   function onTemporalEvent() {
+    var lock = Storage.getValue("lock");
+    if (lock != false) {
+      return;
+    }
     var delta = 3600 + 1;
     var ai_loc = get_ai_loc();
     if (ai_loc == null) {
